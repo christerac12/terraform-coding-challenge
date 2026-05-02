@@ -61,7 +61,7 @@ jobs:
         TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
     - name: Terraform Apply
-      if: github.ref == 'refs/heads/main' && (github.event_name == 'apply' || github.event_name == 'workflow_dispatch')
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
       run: terraform apply -auto-approve -input=false
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -70,14 +70,14 @@ jobs:
         TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     
     - name: Upload SSH key
-      if: github.ref == 'refs/heads/main' && (github.event_name == 'apply' || github.event_name == 'workflow_dispatch')
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
       uses: actions/upload-artifact@v4
       with:
         name: ssh-key
         path: kp.pem
         
     - name: Terraform Destroy
-      if: github.event_name == 'push' || (github.event_name == 'destroy' && inputs.action == 'workflow_dispatch')
+      if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'destroy')
       run: terraform destroy -auto-approve -input=false
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
