@@ -82,6 +82,6 @@ jobs:
         if: always()
         run: |
           git pull origin main
-          git add terraform.tfstate
+          git add terraform.tfstate terraform.tfstate.backup
           git commit -m "update tfstate [skip ci]" || echo "no state changes"
           git push origin main
