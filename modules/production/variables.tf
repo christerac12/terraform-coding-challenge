@@ -1,15 +1,11 @@
-variable "vpc_id" {
+variable "vpc_cidr" {
   type        = string
 }
 
-variable "public_subnet_id" {
+variable "public_subnet_cidr" {
   type        = string
 }
 
-variable "private_subnet_id" {
-  type        = string
-}
-
-variable "key_name" {
+variable "private_subnet_cidr" {
   type        = string
 }
