@@ -59,7 +59,7 @@ jobs:
         TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     
     - name: Upload SSH key
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
       uses: actions/upload-artifact@v4
       with:
         name: ssh-key
