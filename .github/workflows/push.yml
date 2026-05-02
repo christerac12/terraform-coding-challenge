@@ -64,6 +64,16 @@ jobs:
           path: kp.pem
           overwrite: true
 
+      - name: Debug state
+        if: always()
+        run: |
+          echo "--- working directory ---"
+          pwd
+          echo "--- files in directory ---"
+          ls -la
+          echo "--- state file contents ---"
+          cat terraform.tfstate
+
       - name: Terraform Destroy
         if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
         run: terraform destroy -auto-approve -input=false
