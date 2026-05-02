@@ -27,10 +27,10 @@ jobs:
       uses: hashicorp/setup-terraform@v1
 
     - name: Download state
-        uses: actions/download-artifact@v4
-        with:
-          name: tfstate
-        continue-on-error: true
+      uses: actions/download-artifact@v4
+      with:
+        name: tfstate
+      continue-on-error: true
         
     - name: Terraform Init
       run: terraform init
