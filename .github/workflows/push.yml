@@ -26,6 +26,12 @@ jobs:
     - name: Setup Terraform
       uses: hashicorp/setup-terraform@v1
 
+    - name: Download state
+        uses: actions/download-artifact@v4
+        with:
+          name: tfstate
+        continue-on-error: true
+        
     - name: Terraform Init
       run: terraform init
       env:
@@ -68,3 +74,11 @@ jobs:
       with:
         name: ssh-key
         path: kp.pem
+
+    - name: Upload state
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: tfstate
+        path: terraform.tfstate
+        overwrite: true
