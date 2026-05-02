@@ -1,7 +1,16 @@
 name: 'Apply'
 
 on:
-  workflow_dispatch:
+    workflow_dispatch:
+      inputs:
+        action:
+          description: 'Action to perform'
+          required: true
+          default: 'apply'
+          type: choice
+          options:
+            - apply
+            - destroy
 
 permissions:
   contents: read
@@ -24,10 +33,10 @@ jobs:
 
     # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
     - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v1
+      uses: hashicorp/setup-terraform@v3
 
     - name: Download state
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: tfstate
       continue-on-error: true
@@ -64,6 +73,9 @@ jobs:
       with:
         name: ssh-key
         path: kp.pem
+        
+    - name: Terraform Destroy
+      run: terraform destroy -auto-approve -input=false
 
     - name: Upload state
       if: always()
