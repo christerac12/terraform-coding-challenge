@@ -1,94 +1,80 @@
 name: 'Apply'
-
 on:
-    workflow_dispatch:
-      inputs:
-        action:
-          description: 'Action to perform'
-          required: true
-          default: 'apply'
-          type: choice
-          options:
-            - apply
-            - destroy
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Action to perform'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - apply
+          - destroy
 
 permissions:
-  contents: read
+  actions: read
+  contents: write
 
 jobs:
   terraform:
     name: 'Terraform'
     runs-on: ubuntu-latest
     environment: production
-
-    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
     defaults:
       run:
         shell: bash
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
     steps:
-    # Checkout the repository to the GitHub Actions runner
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    # Install the latest version of Terraform CLI and configure the Terraform CLI configuration file with a Terraform Cloud user API token
-    - name: Setup Terraform
-      uses: hashicorp/setup-terraform@v3
+      - name: Configure git
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
 
-    - name: Download state
-      uses: actions/download-artifact@v4
-      with:
-        name: tfstate
-      continue-on-error: true
-        
-    - name: Terraform Init
-      run: terraform init
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
-    - name: Terraform Format
-      if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
-      run: terraform fmt -check
+      - name: Terraform Init
+        run: terraform init
 
-    - name: Terraform Plan
-      if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
-      run: terraform plan -input=false
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Terraform Format
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
+        run: terraform fmt -check
 
-    - name: Terraform Apply
-      if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
-      run: terraform apply -auto-approve -input=false
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-    
-    - name: Upload SSH key
-      if: github.ref == 'refs/heads/main' && (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
-      uses: actions/upload-artifact@v4
-      with:
-        name: ssh-key
-        path: kp.pem
-        
-    - name: Terraform Destroy
-      if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'destroy')
-      run: terraform destroy -auto-approve -input=false
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        TF_VAR_aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        TF_VAR_aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      - name: Terraform Plan
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
+        run: terraform plan -input=false
 
-    - name: Upload state
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: tfstate
-        path: terraform.tfstate
-        overwrite: true
+      - name: Terraform Apply
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
+        run: terraform apply -auto-approve -input=false
+
+      - name: Upload SSH key
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply')
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssh-key
+          path: kp.pem
+          overwrite: true
+
+      - name: Terraform Destroy
+        if: github.event_name == 'workflow_dispatch' && inputs.action == 'destroy'
+        run: terraform destroy -auto-approve -input=false
+
+      - name: Save state to repo
+        if: always()
+        run: |
+          git pull origin main
+          git add terraform.tfstate
+          git commit -m "update tfstate [skip ci]" || echo "no state changes"
+          git push origin main
